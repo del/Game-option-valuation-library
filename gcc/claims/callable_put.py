@@ -36,4 +36,5 @@ def value(S, K, delta, r, T, **params):
     Y = np.maximum(K - S, 0)
     L = X.shape[0] - 1
     X[L, :] = Y[L, :]
+
     return valuation.value_gcc(X=X, Y=Y, **params)
