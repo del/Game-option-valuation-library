@@ -39,8 +39,8 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "b:hnt:",
-                ["batch-dir=", "help", "no-lse"])
+            opts, args = getopt.getopt(argv[1:], "b:hnt:p:",
+                ["batch-dir=", "help", "no-lse", "type=", "parallel="])
         except getopt.error, msg:
             raise Usage(msg)
 
@@ -48,6 +48,8 @@ def main(argv=None):
         batch_dir   = None
         no_lse      = False
         option_type = None
+        parallel    = False
+        n_workers   = None
         for option, value in opts:
             if option in ("-h", "--help"):
                 raise Usage(help_message)
@@ -55,6 +57,10 @@ def main(argv=None):
                 batch_dir = value.strip()
             if option in ("-n", "--no-lse"):
                 no_lse = True
+            if option in ("-p", "--parallel"):
+                no_lse    = True
+                parallel  = True
+                n_workers = int(value.strip())
             if option in ("-t", "--type"):
                 option_type = value.strip()
         if batch_dir is None or option_type is None:
@@ -87,7 +93,7 @@ def main(argv=None):
             for m in m_tuple:
                 #for S0 in (80, 90, 100, 110, 120):
                 for S0 in (80, 90, 110, 120):
-                    for i in range(1, 14):
+                    #for i in range(1, 14):
                         print "N =", N, "  L =", L, "  m =", m
                         print "K =", K, "  delta =", delta, "  T =", T, "  r = ", r, "  volatility = ", volatility
 
@@ -102,7 +108,8 @@ def main(argv=None):
                         # Build parameter dictionary
                         params = {
                             "S0": S0, "S": S, "r": r, "volatility": volatility, "T": T,
-                            "N": N, "L": L, "K": K, "delta": delta
+                            "N": N, "L": L, "K": K, "delta": delta,
+                            "parallel": parallel, "n_workers": n_workers
                         }
 
                         # Valuation
