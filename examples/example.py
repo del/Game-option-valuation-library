@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 import getopt
 import gcc.storage
 import gcc.security_simulation
-import gcc.claims.callable_put
+from gcc.claims import *
 from datetime import datetime
 
 
@@ -26,11 +26,13 @@ help_message = '''
 Usage:
 python example.py -b/--batch-dir batch_dir_name [-n/--no-lse] -t type
 
--t/--type         one of game-call, game-put, callable-put or convertible-bond
+-t/--type type    one of game-call, game-put, callable-put or convertible-bond
 
 -b/--batch-dir    the directory where the output will be saved
 
 -n/--no-lse       use the LSE-free version of the algorithm
+
+-p/--parallel n   use parallel processing with n workers (forces --no-lse to be set)
 '''
 
 
@@ -93,7 +95,7 @@ def main(argv=None):
             for m in m_tuple:
                 #for S0 in (80, 90, 100, 110, 120):
                 for S0 in (80, 90, 110, 120):
-                    #for i in range(1, 14):
+                    for i in range(1, 14):
                         print "N =", N, "  L =", L, "  m =", m
                         print "K =", K, "  delta =", delta, "  T =", T, "  r = ", r, "  volatility = ", volatility
 
