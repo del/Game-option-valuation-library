@@ -14,6 +14,7 @@ import getopt
 import gcc.storage
 import gcc.security_simulation
 import gcc.claims.callable_put
+from datetime import datetime
 
 
 class Usage(Exception):
@@ -64,17 +65,20 @@ def main(argv=None):
         m_tuple = (60,)#(8, 16)
 
     # Risk-free interest rate and volatility of the underlying
-    r = 0.06
+    r          = 0.06
     volatility = 0.4
 
     # Callable put parameters
-    K = 100
+    K     = 100
     delta = 5
-    T = 0.5
+    T     = 0.5
 
+    t0           = datetime.now()
+    n_valuations = 0
     #for N in (1000, 2000, 4000, 8000):
     for N in (1000,):
-        for L in (101, 201, 401, 801, 1601, 3201):
+        #for L in (101, 201, 401, 801, 1601, 3201):
+        for L in (101,):
             for m in m_tuple:
                 #for S0 in (80, 90, 100, 110, 120):
                 for S0 in (80, 90, 110, 120):
@@ -83,7 +87,12 @@ def main(argv=None):
                         print "K =", K, "  delta =", delta, "  T =", T, "  r = ", r, "  volatility = ", volatility
 
                         # Generate the stock paths using Black-Scholes model
-                        S, rand_gen_state = gcc.security_simulation.black_scholes(S0=S0, r=r, volatility=volatility, T=T, N=N, L=L)
+                        S, rand_gen_state = gcc.security_simulation.black_scholes(S0=S0,
+                                                                                  r=r,
+                                                                                  volatility=volatility,
+                                                                                  T=T,
+                                                                                  N=N,
+                                                                                  L=L)
 
                         # Build parameter dictionary
                         params = {
@@ -98,6 +107,10 @@ def main(argv=None):
 
                         print "Option price: V =", valuation["V"], "  Var =", valuation["var"], "  dev =", valuation["dev"], "calculated in", valuation["time"], "\n\n"
                         batch_dir, filename = gcc.storage.save_valuation_json(valuation, batch_dir)
+                        n_valuations += 1
+
+    t1 = datetime.now()
+    print "Performed", str(n_valuations), " valuations in ", str(t1 - t0), " seconds."
     print "Valuations saved in ", batch_dir
 
 
