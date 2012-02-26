@@ -10,9 +10,23 @@ Copyright (c) 2009 Daniel Eliasson. All rights reserved.
 import numpy as np
 from datetime import datetime
 import polynomials as poly
+from multiprocessing import Pool
 
 
 def value_gcc(S, X, Y, r, T, **params):
+    """
+    Values a GCC. This function will delegate to C{value_single_threaded} unless
+    C{params} has a key C{parallel} with value C{True}, and C{n_workers} with an
+    integer value. Please note that the parallel processing always uses the no-lse
+    method.
+    """
+    if "parallel" in params and params["parallel"] is True:
+        return value_parallel(S, X, Y, r, T, **params)
+    else:
+        return value_single_threaded(S, X, Y, r, T, **params)
+
+
+def value_single_threaded(S, X, Y, r, T, **params):
     """
     Values a GCC.
 
@@ -280,3 +294,99 @@ def average_gcc_prices_over_paths(X, Y, sigma, tau):
     V           = np.min(np.array([X[0, 0], np.max(np.array([Y[0, 0], np.sum(R_sigma_tau)/N]))]))
     var         = np.sum(np.power(V_paths - V, 2))/(N-1)
     return V, var
+
+
+def value_parallel(S, X, Y, r, T, **params):
+    """
+    Values a GCC.
+
+    @type        S:            (L+1) x N-array
+    @param       S:            the simulated underlying paths. L is the number of time steps - 1
+                               (timesteps are numbered 0, 1, ..., L), and N is the number of simulated paths,
+    @type        X:            (L+1) x N-array
+    @param       X:            the payoffs to the option holder when the writer terminates,
+    @type        Y:            (L+1) x N-array
+    @param       Y:            the payoffs to the option holder when he exercises,
+    @type        r:            number
+    @param       r:            the risk-free interest rate,
+    @type        T:            number
+    @param       T:            the maturity time, measured in years,
+    @param       params:       optional parameters,
+    @type        m:            integer
+    @keyword     m:            the number of dimensions in the projection subspace when using
+                               the LSE method of valuation,
+    @type        proj_type:    string
+    @keyword     proj_type:    the type of functions in the projection subspace, as recognised
+                               by L{gcc.polynomials}; e.g. C{"hermite"} or C{"laguerre"}.
+
+    @note:    When C{m} is set, the LSE method will be employed, otherwise not.
+    @note:    Any further parameters will be ignored, but emitted into the output,
+              so they can be used to annotate the output.
+    @note:    The parameters C{S}, C{X}, and C{Y} must all be NumPy arrays with their shapes properly set.
+              C{r} and C{T} will be cast to C{float64}.
+
+    @return:  a C{dict} object containing all the input parameters, as well as:
+                  - C{V}, the option price,
+                  - C{var}, the Monte-Carlo variance
+                  - C{dev}, the square root of var,
+                  - C{L}, the number of time steps - 1,
+                  - C{dt}, the size of a timestep, equal to T/L
+                  - C{time}, the running time of the option pricing.
+    """
+    t0 = datetime.now()
+    L  = S.shape[0] - 1
+    N  = S.shape[1]
+    r  = np.float64(r)
+    T  = np.float64(T)
+    dt = T/L
+
+    # Create list of parameter dictionaries to parallelise computation
+    parameters = [(X[:, n], Y[:, n], L, n) for n in range(0, N-1)]
+
+    # Create a pool of processes
+    pool = Pool(params["n_workers"])
+
+    # Calculate valuations from each path
+    valuations = pool.map(value_no_lse, parameters)
+
+    # Calculate average valuation and the variance
+    V   = np.mean(valuations)
+    var = np.var(valuations)
+    dev = np.sqrt(var)
+
+    t1  = datetime.now()
+
+    params.update({
+        "S":    S,
+        "X":    X,
+        "Y":    Y,
+        "r":    r,
+        "T":    T,
+        "V":    V,
+        "var":  var,
+        "dev":  dev,
+        "dt":   dt,
+        "L":    L,
+        "time": str(t1 - t0),
+    })
+    return params
+
+
+def value_no_lse(params):
+    X_n               = params[0]
+    Y_n               = params[1]
+    L                 = params[2]
+    n                 = params[3]
+    exp_holding_value = Y_n[L]
+    for j_p in range(L-1, -1, -1): # j = L-1, ..., 1
+        if Y_n[j_p] == 0:
+            continue
+
+        if Y_n[j_p] > exp_holding_value:
+            exp_holding_value = Y_n[j_p]
+            continue
+
+        if X_n[j_p] < exp_holding_value:
+            exp_holding_value = X_n[j_p]
+
+    return exp_holding_value
