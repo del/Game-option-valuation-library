@@ -9,7 +9,8 @@ Copyright (c) 2009 Daniel Eliasson. All rights reserved.
 
 import sys
 import getopt
-sys.path.append('..')
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 import gcc.storage
 
 
